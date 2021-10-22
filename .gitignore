@@ -1,0 +1,7 @@
+*~
+*.o
+*.so*
+*.a
+*.po
+*.pico
+test-monitor

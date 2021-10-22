@@ -1,0 +1,7 @@
+- drvctl(4) DRVGETEVENT needs root (write on /dev/drvctl) access; relax this restriction
+- drvctl(4) DRVGETEVENT cannot distribute events to all listeners, it distributes the messages to a random of N listeners; allow N listeners
+- get device-class (e.g. audio, crypto, disk, etc) and device-subclass (mouse, touchpad, touchscreen, etc) from the kernel in libprop
+
+nice to have:
+- possibly: set event (device-attach?) for drvctl(4) DRVCTLCOMMAND get-properties, userland needs to emulate it (same for devpubd)
+- pass device properties along the events from drvctl(4) DRVGETEVENT

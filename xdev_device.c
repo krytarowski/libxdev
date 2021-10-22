@@ -64,6 +64,7 @@ xdev_device_new(struct xdev *x, const char *devname, const char *driver,
 	assert(devsubclass != NULL);
 	assert(event != NULL);
 	assert(parent != NULL);
+	assert(xml != NULL);
 
 	xd = (struct xdev_device *)calloc(sizeof(*xd), 1);
 	if (__predict_false(xd == NULL))
@@ -75,51 +76,49 @@ xdev_device_new(struct xdev *x, const char *devname, const char *driver,
 
 	xd->devname = strdup(devname);
 	if (__predict_false(xd->devname == NULL))
-		goto fail;
+		goto fail1;
 
 	xd->driver = strdup(driver);
 	if (__predict_false(xd->driver == NULL))
-		goto fail;
+		goto fail2;
 
 	xd->devclass = strdup(devclass);
 	if (__predict_false(xd->devclass == NULL))
-		goto fail;
+		goto fail3;
 
 	xd->devsubclass = strdup(devsubclass);
 	if (__predict_false(xd->devsubclass == NULL))
-		goto fail;
+		goto fail4;
 
 	xd->event = strdup(event);
 	if (__predict_false(xd->event == NULL))
-		goto fail;
+		goto fail5;
 
 	xd->parent = strdup(parent);
 	if (__predict_false(xd->parent == NULL))
-		goto fail;
+		goto fail6;
 
 	xd->xml = strdup(xml);
 	if (__predict_false(xd->xml == NULL))
-		goto fail;
+		goto fail7;
 
 	xd->unit = unit;
 
 	return xd;
 
-fail:
-	if (xd->xml != NULL)
-		free(xd->xml);
-	if (xd->parent != NULL)
-		free(xd->parent);
-	if (xd->event != NULL)
-		free(xd->event);
-	if (xd->devsubclass != NULL)
-		free(xd->devsubclass);
-	if (xd->devclass != NULL)
-		free(xd->devclass);
-	if (xd->driver != NULL)
-		free(xd->driver);
-	if (xd->devname != NULL)
-		free(xd->devname);
+fail7:
+	free(xd->parent);
+fail6:
+	free(xd->event);
+fail5:
+	free(xd->devsubclass);
+fail4:
+	free(xd->devclass);
+fail3:
+	free(xd->driver);
+fail2:
+	free(xd->devname);
+fail1:
 	free(xd);
 
 	return NULL;
@@ -250,7 +249,7 @@ xdev_device_from_devname(struct xdev *x, const char *devname)
 
 	b = prop_dictionary_get_cstring(result_data, "device-parent", &parent);
 	if (__predict_false(b == false)) {
-		/* If missing, parent the node is top-level in the tree. */
+		/* If missing, the node is a top-level entry in the tree. */
 		parent = "";
 	}
 

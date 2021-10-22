@@ -267,6 +267,7 @@ xdev_device_from_devname(struct xdev *x, const char *devname)
 	}
 
 	xd = xdev_device_new(x, devname, driver, "???", "???", "device-attach", parent, xml, unit);
+	free(xml);
 	prop_object_release(d);
 	return xd;
 }

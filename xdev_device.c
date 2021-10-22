@@ -290,6 +290,7 @@ xdev_device_ref(struct xdev_device *xd)
 	assert(xd->devsubclass != NULL);
 	assert(xd->event != NULL);
 	assert(xd->parent != NULL);
+	assert(xd->xml != NULL);
 
 	return xd;
 }
@@ -310,6 +311,7 @@ xdev_device_unref(struct xdev_device *xd)
 	assert(xd->devsubclass != NULL);
 	assert(xd->event != NULL);
 	assert(xd->parent != NULL);
+	assert(xd->xml != NULL);
 
 	if (xd->refcnt == 1) {
 		free(xd->devname);
@@ -318,6 +320,7 @@ xdev_device_unref(struct xdev_device *xd)
 		free(xd->devsubclass);
 		free(xd->event);
 		free(xd->parent);
+		free(xd->xml);
 		free(xd);
 		return NULL;
 	}

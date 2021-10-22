@@ -159,25 +159,26 @@ xdev_enumerate_scan_devices_recursive(struct xdev_enumerate *xe, const char *dev
 
 	drvctl_fd = xe->xdev->drvctl_fd;
 
-retry:
 	memset(&laa, 0, sizeof(laa));
 	strlcpy(laa.l_devname, devname, sizeof(laa.l_devname));
 
+retry:
 	if (__predict_false(ioctl(drvctl_fd, DRVLISTDEV, &laa) == -1))
 		return -1;
 
 	if ((children = laa.l_children) == 0)
 		return 0;
 
-	laa.l_childname = malloc(children * sizeof(laa.l_childname[0]));
-	if (__predict_false(laa.l_childname == NULL))
+	ret = reallocarr(&laa.l_childname, children, sizeof(laa.l_childname[0]));
+	if (__predict_false(ret != 0))
 		return -1;
 
 	if (__predict_false(ioctl(drvctl_fd, DRVLISTDEV, &laa) == -1))
                 goto fail;
 
-	if (__predict_false(laa.l_children != children))
+	if (__predict_false(laa.l_children != children)) {
 		goto retry;
+	}
 
         for (i = 0; i < children; i++) {
 		child = laa.l_childname[i];

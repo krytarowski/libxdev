@@ -176,9 +176,8 @@ retry:
 	if (__predict_false(ioctl(drvctl_fd, DRVLISTDEV, &laa) == -1))
                 goto fail;
 
-	if (__predict_false(laa.l_children != children)) {
+	if (__predict_false(laa.l_children != children))
 		goto retry;
-	}
 
         for (i = 0; i < children; i++) {
 		child = laa.l_childname[i];
@@ -212,6 +211,7 @@ retry:
 end:
 	free(laa.l_childname);
 	return 0;
+
 fail:
 	free(laa.l_childname);
 	return -1;

@@ -140,6 +140,7 @@ xdev_monitor_unref(struct xdev_monitor *xm)
 		close(xm->shutdown_fd[1]);
 		close(xm->pipe_fd[0]);
 		close(xm->pipe_fd[1]);
+		xdev_list_free(&xm->devices);
 		xm->magic = 0xdeadbeef;
 		free(xm);
 		return NULL;

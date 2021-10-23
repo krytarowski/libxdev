@@ -72,13 +72,14 @@ xdev_monitor_new(struct xdev *x)
 	if (__predict_false(xm == NULL))
 		return NULL;
 
-	if (__predict_false(pipe2(xm->shutdown_fd, O_CLOEXEC | O_NONBLOCK) == -1))
+	if (__predict_false(
+		pipe2(xm->shutdown_fd, O_CLOEXEC | O_NONBLOCK) == -1))
 		goto fail;
 
 	if (__predict_false(pipe2(xm->pipe_fd, O_CLOEXEC | O_NONBLOCK) == -1))
 		goto fail2;
 
-	if (pthread_mutex_init(&xm->mutex, NULL) != 0)
+	if (__predict_false(pthread_mutex_init(&xm->mutex, NULL) != 0))
 		goto fail3;
 
 	xm->refcnt = 1;
@@ -299,7 +300,8 @@ xdev_monitor_thread(void *arg)
 			continue;
 		}
 
-		xd = xdev_device_new(x, device, "???", "???", "???", event, parent, xml, -1);
+		xd = xdev_device_new(x, device, "???", "???", "???", event,
+			parent, xml, -1);
 		free(xml);
 		prop_object_release(ev);
 

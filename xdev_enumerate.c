@@ -164,14 +164,14 @@ xdev_enumerate_scan_devices_recursive(struct xdev_enumerate *xe, const char *dev
 
 retry:
 	if (__predict_false(ioctl(drvctl_fd, DRVLISTDEV, &laa) == -1))
-		return -1;
+		goto fail;
 
 	if ((children = laa.l_children) == 0)
-		return 0;
+		goto end;
 
 	ret = reallocarr(&laa.l_childname, children, sizeof(laa.l_childname[0]));
 	if (__predict_false(ret != 0))
-		return -1;
+		goto fail;
 
 	if (__predict_false(ioctl(drvctl_fd, DRVLISTDEV, &laa) == -1))
                 goto fail;
@@ -209,6 +209,8 @@ retry:
 		++xe->num_devices;
         }
 
+end:
+	free(laa.l_childname);
 	return 0;
 fail:
 	free(laa.l_childname);

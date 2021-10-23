@@ -74,7 +74,7 @@ xdev_monitor_new(struct xdev *x)
 	xm->refcnt = 1;
 	xm->magic = XDEV_MONITOR_MAGIC;
 	xm->xdev = x;
-	SIMPLEQ_INIT(&xm->devices);
+	TAILQ_INIT(&xm->devices);
 
 	return xm;
 
@@ -146,7 +146,7 @@ xdev_monitor_thread(void *arg)
 	struct xdev_monitor *xm;
 	struct xdev_device *xd;
 	struct xdev *x;
-	struct xdev_monitor_devices_entry *xmde;
+	struct xdev_list_entry *xle;
 	prop_dictionary_t ev;
 	int drvctl_fd;
 	int pipe_end;
@@ -212,21 +212,20 @@ xdev_monitor_thread(void *arg)
 			continue;
 		}
 
-		xmde = (struct xdev_monitor_devices_entry *)malloc(sizeof(*xmde));
-		if (__predict_false(xmde == NULL)) {
+		xle = xdev_list_entry_new(xd);
+		if (__predict_false(xle == NULL)) {
 			break;
 		}
-		xmde->xd = xd;
 		pthread_mutex_lock(&xm->mutex);
-		SIMPLEQ_INSERT_TAIL(&xm->devices, xmde, link);
+		TAILQ_INSERT_TAIL(&xm->devices, xle, link);
 		pthread_mutex_unlock(&xm->mutex);
 
 		if (__predict_false(xwrite(xm->pipe_fd[1], &one, 1) != 1)) {
 			pthread_mutex_lock(&xm->mutex);
-			SIMPLEQ_REMOVE(&xm->devices, xmde, xdev_monitor_devices_entry, link);
+			TAILQ_REMOVE(&xm->devices, xle, link);
 			pthread_mutex_unlock(&xm->mutex);
 			xdev_device_unref(xd);
-			free(xmde);
+			free(xle);
 			continue;
 		}
 	}
@@ -269,7 +268,7 @@ xdev_monitor_get_fd(struct xdev_monitor *xm)
 struct xdev_device *
 xdev_monitor_receive_device(struct xdev_monitor *xm)
 {
-	struct xdev_monitor_devices_entry *xmde;
+	struct xdev_list_entry *xle;
 	struct xdev_device *xd;
 	uint8_t byte;
 
@@ -283,13 +282,13 @@ xdev_monitor_receive_device(struct xdev_monitor *xm)
 		return NULL;
 
 	pthread_mutex_lock(&xm->mutex);
-	if (SIMPLEQ_EMPTY(&xm->devices))
+	if (TAILQ_EMPTY(&xm->devices))
 		goto fail;
-	xmde = SIMPLEQ_FIRST(&xm->devices);
-	SIMPLEQ_REMOVE_HEAD(&xm->devices, link);
+	xle = TAILQ_FIRST(&xm->devices);
+	TAILQ_REMOVE(&xm->devices, xle, link);
 	pthread_mutex_unlock(&xm->mutex);
-	xd = xmde->xd;
-	free(xmde);
+	xd = xdev_list_entry_get_device(xle);
+	free(xle);
 
 	return xd;
 

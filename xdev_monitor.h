@@ -36,12 +36,6 @@
 #include "xdev.h"
 #include "xdev_list.h"
 
-struct xdev_monitor_devices_entry {
-	SIMPLEQ_ENTRY(xdev_monitor_devices_entry) link;
-	struct xdev_device *xd;
-};
-SIMPLEQ_HEAD(xdev_monitor_devices_entries, xdev_monitor_devices_entry);
-
 #define XDEV_MONITOR_MAGIC 0x024385aa
 
 struct xdev_monitor {
@@ -50,7 +44,7 @@ struct xdev_monitor {
 	struct xdev *xdev;
 	xdev_filter_cb xfcb;
 	void *xfcb_cookie;
-	struct xdev_monitor_devices_entries devices;
+	struct xdev_list devices;
 	int pipe_fd[2];
 	pthread_t thread;
 	pthread_mutex_t mutex;

@@ -75,7 +75,7 @@ xdev_monitor_new(struct xdev *x)
 	if (__predict_false(pipe2(xm->shutdown_fd, O_CLOEXEC | O_NONBLOCK) == -1))
 		goto fail;
 
-	if (__predict_false(pipe2(xm->pipe_fd, O_CLOEXEC) == -1))
+	if (__predict_false(pipe2(xm->pipe_fd, O_CLOEXEC | O_NONBLOCK) == -1))
 		goto fail;
 
 	if (pthread_mutex_init(&xm->mutex, NULL) != 0)

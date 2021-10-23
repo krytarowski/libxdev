@@ -76,10 +76,10 @@ xdev_monitor_new(struct xdev *x)
 		goto fail;
 
 	if (__predict_false(pipe2(xm->pipe_fd, O_CLOEXEC | O_NONBLOCK) == -1))
-		goto fail;
+		goto fail2;
 
 	if (pthread_mutex_init(&xm->mutex, NULL) != 0)
-		goto fail2;
+		goto fail3;
 
 	xm->refcnt = 1;
 	xm->magic = XDEV_MONITOR_MAGIC;
@@ -88,9 +88,13 @@ xdev_monitor_new(struct xdev *x)
 
 	return xm;
 
-fail2:
+fail3:
 	close(xm->pipe_fd[0]);
 	close(xm->pipe_fd[1]);
+
+fail2:
+	close(xm->shutdown_fd[0]);
+	close(xm->shutdown_fd[1]);
 
 fail:
 	free(xm);
@@ -141,6 +145,7 @@ xdev_monitor_unref(struct xdev_monitor *xm)
 		close(xm->pipe_fd[0]);
 		close(xm->pipe_fd[1]);
 		xdev_list_free(&xm->devices);
+		pthread_mutex_destroy(&xm->mutex);
 		xm->magic = 0xdeadbeef;
 		free(xm);
 		return NULL;

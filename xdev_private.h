@@ -34,7 +34,7 @@
 #define XDEV_MAGIC 0x1245780a
 
 struct xdev {
-	volatile int refcnt;
+	int refcnt;
 	int magic;
 	void *user;
 	int drvctl_fd;

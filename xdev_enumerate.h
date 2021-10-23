@@ -37,7 +37,7 @@
 #define XDEV_ENUMERATE_MAGIC 0x492023c5
 
 struct xdev_enumerate {
-	volatile int refcnt;
+	int refcnt;
 	int magic;
 	struct xdev *xdev;
 	xdev_filter_cb xfcb;

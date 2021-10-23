@@ -39,7 +39,7 @@
 #define XDEV_MONITOR_MAGIC 0x024385aa
 
 struct xdev_monitor {
-	volatile int refcnt;
+	int refcnt;
 	int magic;
 	struct xdev *xdev;
 	xdev_filter_cb xfcb;

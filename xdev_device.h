@@ -40,7 +40,7 @@
 #define XDEV_DEVICE_MAGIC 0x8639fbc2
 
 struct xdev_device {
-	volatile int refcnt;
+	int refcnt;
 	int magic;
 	struct xdev *xdev;
 	char *devname;

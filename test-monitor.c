@@ -70,7 +70,24 @@ main(int argc, char **argv)
 		xdev_device_unref(dev);
 	}
 
-	struct xdev_monitor *monitor = xdev_monitor_new(xdev);
+	struct xdev_monitor *monitor;
+
+	/* Test for 10 sec to start-stop the monitor. */
+	for (size_t iii = 0; iii < 100; iii++) {
+	printf(".");fflush(stdout);
+	monitor = xdev_monitor_new(xdev);
+	if (!monitor)
+		errx(EXIT_FAILURE, "xdev_monitor_new");
+
+	xdev_monitor_filter(monitor, filter, NULL);
+	xdev_monitor_enable_receiving(monitor);
+	usleep(100000);
+	xdev_monitor_unref(monitor);
+	}
+
+	printf("\nMonitor tested!");
+
+	monitor = xdev_monitor_new(xdev);
 	if (!monitor)
 		errx(EXIT_FAILURE, "xdev_monitor_new");
 

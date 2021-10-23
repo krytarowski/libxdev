@@ -260,7 +260,6 @@ xdev_monitor_thread(void *arg)
 			__nothing;
 		} else {
 			/* Can we ever land here? */
-			abort();
 			continue;
 		}
 

@@ -57,7 +57,6 @@ xdev_new(void)
 
 	x->refcnt = 1;
 	x->magic = XDEV_MAGIC;
-	x->user = NULL;
 
 	return x;
 

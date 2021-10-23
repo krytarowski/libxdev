@@ -36,8 +36,11 @@ __RCSID("$NetBSD$");
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include "xdev_utils.h"
 
 int
 xopen(const char *path, int flags)
@@ -82,6 +85,18 @@ xread(int d, void *buf, size_t nbytes)
 
 	do {
 		ret = read(d, buf, nbytes);
+	} while (ret == -1 && errno == EINTR);
+
+	return ret;
+}
+
+int
+xpoll(struct pollfd *fds, nfds_t nfds, int timeout)
+{
+	int ret;
+
+	do {
+		ret = poll(fds, nfds, timeout);
 	} while (ret == -1 && errno == EINTR);
 
 	return ret;

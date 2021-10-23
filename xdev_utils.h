@@ -35,11 +35,14 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
+#include <poll.h>
+
 __BEGIN_HIDDEN_DECLS
 int xopen(const char *, int);
 int xclose(int);
 ssize_t xwrite(int, const void *, size_t);
 ssize_t xread(int, void *, size_t);
+int xpoll(struct pollfd *, nfds_t, int);
 
 struct kinfo_drivers *kinfo_getdrivers(size_t *);
 __END_HIDDEN_DECLS

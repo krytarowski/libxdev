@@ -52,7 +52,7 @@ xdev_new(void)
 	if (__predict_false(x == NULL))
 		return NULL;
 
-	x->drvctl_fd = xopen(DRVCTLDEV, O_RDWR | O_CLOEXEC);
+	x->drvctl_fd = xopen(DRVCTLDEV, O_RDWR | O_CLOEXEC | O_NONBLOCK);
 	if (__predict_false(x->drvctl_fd == -1))
 		goto fail;
 

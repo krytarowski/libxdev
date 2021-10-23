@@ -51,6 +51,8 @@ __RCSID("$NetBSD$");
 #include "xdev_private.h"
 #include "xdev_utils.h"
 
+const static uint8_t one = '1';
+
 struct xdev_monitor *
 xdev_monitor_new(struct xdev *x)
 {
@@ -69,6 +71,9 @@ xdev_monitor_new(struct xdev *x)
 	xm = (struct xdev_monitor *)calloc(sizeof(*xm), 1);
 	if (__predict_false(xm == NULL))
 		return NULL;
+
+	if (__predict_false(pipe2(xm->shutdown_fd, O_CLOEXEC | O_NONBLOCK) == -1))
+		goto fail;
 
 	if (__predict_false(pipe2(xm->pipe_fd, O_CLOEXEC) == -1))
 		goto fail;
@@ -127,6 +132,14 @@ xdev_monitor_unref(struct xdev_monitor *xm)
 	}
 
 	if (xm->refcnt == 1) {
+		if (xm->thread != NULL) {
+			xwrite(xm->shutdown_fd[1], &one, 1);
+			pthread_join(xm->thread, NULL);
+		}
+		close(xm->shutdown_fd[0]);
+		close(xm->shutdown_fd[1]);
+		close(xm->pipe_fd[0]);
+		close(xm->pipe_fd[1]);
 		xm->magic = 0xdeadbeef;
 		free(xm);
 		return NULL;
@@ -183,6 +196,8 @@ xdev_monitor_thread(void *arg)
 	struct xdev *x;
 	struct xdev_list_entry *xle;
 	prop_dictionary_t ev;
+	struct pollfd pfd[2];
+	int num_fds;
 	int drvctl_fd;
 	int pipe_end;
 	int ret;
@@ -192,8 +207,6 @@ xdev_monitor_thread(void *arg)
 	char *xml;
 	bool b;
 
-	const static uint8_t one = '1';
-
 	assert(arg != NULL);
 
 	xm = (struct xdev_monitor *)arg;
@@ -201,11 +214,57 @@ xdev_monitor_thread(void *arg)
 	drvctl_fd = xm->xdev->drvctl_fd;
 	pipe_end = xm->pipe_fd[1];
 
+	pfd[0].fd = drvctl_fd;
+	pfd[0].events = POLLIN;
+
+	pfd[1].fd = xm->shutdown_fd[0];
+	pfd[1].events = POLLIN;
+
 	assert(xm->magic == XDEV_MONITOR_MAGIC);
 	assert(x != NULL);
 	assert(x->magic == XDEV_MAGIC);
 
 	for (;;) {
+		num_fds = xpoll(pfd, __arraycount(pfd), INFTIM);
+		if (__predict_false(num_fds == -1)) {
+			break;
+		}
+
+		/* drvctl device error */
+		if (__predict_false(pfd[0].revents & (POLLERR|POLLNVAL))) {
+			break;
+		}
+
+		/* self-pipe error */
+		if (__predict_false(pfd[1].revents & (POLLERR|POLLNVAL))) {
+			break;
+		}
+
+		/* drvctl device HUP */
+		if (__predict_false(pfd[0].revents & POLLHUP)) {
+			break;
+		}
+
+		/* self-pipe HUP */
+		if (__predict_false(pfd[0].revents & POLLHUP)) {
+			break;
+		}
+
+		/* self-pipe signal to interrupt */
+		if (pfd[1].revents & POLLIN) {
+			break;
+		}
+
+		/* drvctl is ready to deliver a message */
+		if (pfd[0].revents & POLLIN) {
+			__nothing;
+		} else {
+			/* Can we ever land here? */
+			abort();
+			continue;
+		}
+
+		/* non-blocking read */
 		ret = prop_dictionary_recv_ioctl(drvctl_fd, DRVGETEVENT, &ev);
 		if (__predict_false(ret != 0)) {
 			break;

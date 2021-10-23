@@ -45,6 +45,7 @@ struct xdev_monitor {
 	xdev_filter_cb xfcb;
 	void *xfcb_cookie;
 	struct xdev_list devices;
+	int shutdown_fd[2]; /* self-pipe to stop the polling thread */
 	int pipe_fd[2];
 	pthread_t thread;
 	pthread_mutex_t mutex;

@@ -38,6 +38,7 @@ __RCSID("$NetBSD$");
 #include <sys/sysctl.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,14 +135,20 @@ xdev_device_from_node(struct xdev *x, devmajor_t major, uint32_t unit, mode_t m)
 	char *driver;
 	char *devname;
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(m != S_IFCHR && m != S_IFBLK))
+	if (__predict_false(m != S_IFCHR && m != S_IFBLK)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	kid = kinfo_getdrivers(&cnt);
 	if (__predict_false(kid == NULL))
@@ -166,8 +173,10 @@ xdev_device_from_node(struct xdev *x, devmajor_t major, uint32_t unit, mode_t m)
 		}
 		break;
 	}
-	if (__predict_false(driver == NULL))
+	if (__predict_false(driver == NULL)) {
+		errno = EINVAL;
 		goto fail;
+	}
 
 	ret = asprintf(&devname, "%s%" PRIu32, driver, unit);
 	if (__predict_false(ret == -1))
@@ -201,14 +210,20 @@ xdev_device_from_devname(struct xdev *x, const char *devname)
 
 	char *xml;
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(devname == NULL))
+	if (__predict_false(devname == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	c = prop_dictionary_create();
 	a = prop_dictionary_create();
@@ -226,24 +241,29 @@ xdev_device_from_devname(struct xdev *x, const char *devname)
 
 	r = prop_dictionary_sendrecv_ioctl(c, x->drvctl_fd, DRVCTLCOMMAND, &d);
 	prop_object_release(c);
-	if (__predict_false(r != 0))
+	if (__predict_false(r != 0)) {
+		errno = ENODEV;
 		return NULL;
+	}
 
 	b = prop_dictionary_get_int8(d, "drvctl-error", &perr);
 	if (__predict_false(b == false || perr != 0)) {
 		prop_object_release(d);
+		errno = ENODEV;
 		return NULL;
 	}
 
 	result_data = prop_dictionary_get(d, "drvctl-result-data");
 	if (__predict_false(result_data == false)) {
 		prop_object_release(d);
+		errno = ENODEV;
 		return NULL;
 	}
 
 	b = prop_dictionary_get_cstring(result_data, "device-driver", &driver);
 	if (__predict_false(b == false)) {
 		prop_object_release(d);
+		errno = ENODEV;
 		return NULL;
 	}
 
@@ -256,12 +276,14 @@ xdev_device_from_devname(struct xdev *x, const char *devname)
 	b = prop_dictionary_get_uint32(result_data, "device-unit", &unit);
 	if (__predict_false(b == false)) {
 		prop_object_release(d);
+		errno = ENODEV;
 		return NULL;
 	}
 
 	xml = prop_dictionary_externalize(result_data);
 	if (__predict_false(xml == NULL)) {
 		prop_object_release(d);
+		errno = ENODEV;
 		return NULL;
 	}
 
@@ -275,11 +297,15 @@ struct xdev_device *
 xdev_device_ref(struct xdev_device *xd)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	xd->refcnt++;
 
@@ -298,11 +324,15 @@ struct xdev_device *
 xdev_device_unref(struct xdev_device *xd)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	assert(xd->devname != NULL);
 	assert(xd->driver != NULL);
@@ -320,6 +350,7 @@ xdev_device_unref(struct xdev_device *xd)
 		free(xd->event);
 		free(xd->parent);
 		free(xd->xml);
+		xd->magic = 0xdeadbeef;
 		free(xd);
 		return NULL;
 	}
@@ -333,11 +364,15 @@ struct xdev *
 xdev_device_get_xdev(struct xdev_device *xd)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	assert(xd->xdev->magic == XDEV_MAGIC);
 
@@ -348,11 +383,15 @@ int
 xdev_device_get_devname(struct xdev_device *xd, const char **devname)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	assert(xd->devname != NULL);
 
@@ -365,11 +404,15 @@ int
 xdev_device_get_driver(struct xdev_device *xd, const char **driver)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	assert(xd->driver != NULL);
 
@@ -382,11 +425,15 @@ int
 xdev_device_get_devclass(struct xdev_device *xd, const char **devclass)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	assert(xd->devclass != NULL);
 
@@ -399,11 +446,15 @@ int
 xdev_device_get_devsubclass(struct xdev_device *xd, const char **devsubclass)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	assert(xd->devsubclass != NULL);
 
@@ -416,11 +467,15 @@ int
 xdev_device_get_event(struct xdev_device *xd, const char **event)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	assert(xd->event != NULL);
 
@@ -433,8 +488,10 @@ int
 xdev_device_get_parent(struct xdev_device *xd, const char **parent)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
 		return -1;
@@ -450,11 +507,15 @@ int
 xdev_device_get_unit(struct xdev_device *xd, uint32_t *unit)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	if (unit != NULL)
 		*unit = xd->unit;
@@ -465,11 +526,15 @@ int
 xdev_device_get_major(struct xdev_device *xd, mode_t type, devmajor_t *devmajor)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	if (devmajor != NULL)
 		*devmajor = getdevmajor(xd->driver, type);
@@ -480,11 +545,15 @@ int
 xdev_device_externalize(struct xdev_device *xd, const char **xml)
 {
 
-	if (__predict_false(xd == NULL))
+	if (__predict_false(xd == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC))
+	if (__predict_false(xd->magic != XDEV_DEVICE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	assert(xd->xml != NULL);
 

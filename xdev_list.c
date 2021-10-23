@@ -35,6 +35,7 @@ __RCSID("$NetBSD$");
 #include <sys/queue.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 
 #include "xdev.h"
@@ -45,13 +46,17 @@ xdev_list_get_head(struct xdev_list *xl)
 {
 	struct xdev_list_entry *first;
 
-	if (__predict_false(xl == NULL))
+	if (__predict_false(xl == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	first = TAILQ_FIRST(xl);
 
-	if (__predict_false(first->magic != XDEV_LIST_ENTRY_MAGIC))
+	if (__predict_false(first->magic != XDEV_LIST_ENTRY_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	return first;
 }
@@ -61,13 +66,24 @@ xdev_list_entry_get_next(struct xdev_list_entry *xle)
 {
 	struct xdev_list_entry *next;
 
-	if (__predict_false(xle == NULL))
+	if (__predict_false(xle == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
+
+	if (__predict_false(xle->magic != XDEV_LIST_ENTRY_MAGIC)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	next = TAILQ_NEXT(xle, link);
 
-	if (next != NULL && __predict_false(next->magic != XDEV_LIST_ENTRY_MAGIC))
-		return NULL;
+	if (next != NULL) {
+		if (__predict_false(next->magic != XDEV_LIST_ENTRY_MAGIC)) {
+			errno = EINVAL;
+			return NULL;
+		}
+	}
 
 	return next;
 }
@@ -76,14 +92,17 @@ struct xdev_device *
 xdev_list_entry_get_device(struct xdev_list_entry *xle)
 {
 
-	if (__predict_false(xle == NULL))
+	if (__predict_false(xle == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xle->magic != XDEV_LIST_ENTRY_MAGIC))
+	if (__predict_false(xle->magic != XDEV_LIST_ENTRY_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xle->device->magic != XDEV_DEVICE_MAGIC))
-		return NULL;
+	assert(xle->device->magic == XDEV_DEVICE_MAGIC);
 
 	return xdev_device_ref(xle->device);
 }
@@ -116,6 +135,7 @@ xdev_list_free(struct xdev_list *list)
 
 		TAILQ_REMOVE(list, e, link);
 		xdev_device_unref(e->device);
+		e->magic = 0xdeadbeef;
 		free(e);
 	}
 }

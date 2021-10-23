@@ -34,6 +34,7 @@ __RCSID("$NetBSD$");
 #include <sys/types.h>
 #include <sys/drvctlio.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -70,11 +71,15 @@ struct xdev *
 xdev_ref(struct xdev *x)
 {
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	x->refcnt++;
 
@@ -85,14 +90,19 @@ struct xdev *
 xdev_unref(struct xdev *x)
 {
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	if (x->refcnt == 1) {
 		xclose(x->drvctl_fd);
+		x->magic = 0xdeadbeef;
 		free(x);
 		return NULL;
 	}
@@ -106,11 +116,15 @@ void *
 xdev_get_userdata(struct xdev *x)
 {
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	return x->user;
 }
@@ -119,11 +133,15 @@ void
 xdev_set_userdata(struct xdev *x, void *user)
 {
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return;
+	}
 
 	x->user = user;
 }

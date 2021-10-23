@@ -37,6 +37,7 @@ __RCSID("$NetBSD$");
 #include <sys/stat.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,14 +53,18 @@ xdev_enumerate_new(struct xdev *x)
 {
 	struct xdev_enumerate *xe;
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	xe = (struct xdev_enumerate *)calloc(sizeof(*xe), 1);
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) 
 		return NULL;
 
 	xe->refcnt = 1;
@@ -74,11 +79,15 @@ struct xdev_enumerate *
 xdev_enumerate_ref(struct xdev_enumerate *xe)
 {
 
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC))
+	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	xe->refcnt++;
 
@@ -89,14 +98,20 @@ struct xdev_enumerate *
 xdev_enumerate_unref(struct xdev_enumerate *xe)
 {
 
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC))
+	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	if (xe->refcnt == 1) {
 		xdev_list_free(&xe->devices);
+		xe->magic = 0xdeadbeef;
+		free(xe);
 		return NULL;
 	}
 
@@ -109,27 +124,35 @@ struct xdev *
 xdev_enumerate_get_xdev(struct xdev_enumerate *xe)
 {
 
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC))
+	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xe->xdev->magic != XDEV_MAGIC))
-		return NULL;
+	assert(xe->xdev->magic == XDEV_MAGIC);
 
 	return xe->xdev;
 }
 
 int
-xdev_enumerate_filter(struct xdev_enumerate *xe, xdev_filter_cb xfcb, void *xfcb_cookie)
+xdev_enumerate_filter(struct xdev_enumerate *xe, xdev_filter_cb xfcb,
+	void *xfcb_cookie)
 {
 
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC))
+	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	xe->xfcb = xfcb;
 	xe->xfcb_cookie = xfcb_cookie;
@@ -138,7 +161,8 @@ xdev_enumerate_filter(struct xdev_enumerate *xe, xdev_filter_cb xfcb, void *xfcb
 }
 
 static int
-xdev_enumerate_scan_devices_recursive(struct xdev_enumerate *xe, const char *devname, int depth, int max_depth)
+xdev_enumerate_scan_devices_recursive(struct xdev_enumerate *xe,
+	const char *devname, int depth, int max_depth)
 {
 	struct xdev_device *device;
 	struct xdev_list_entry *entry;
@@ -169,7 +193,8 @@ retry:
 	if ((children = laa.l_children) == 0)
 		goto end;
 
-	ret = reallocarr(&laa.l_childname, children, sizeof(laa.l_childname[0]));
+	ret = reallocarr(&laa.l_childname, children,
+		sizeof(laa.l_childname[0]));
 	if (__predict_false(ret != 0))
 		goto fail;
 
@@ -187,7 +212,8 @@ retry:
 			continue;
 		}
 
-		ret = xdev_enumerate_scan_devices_recursive(xe, child, depth + 1, max_depth);
+		ret = xdev_enumerate_scan_devices_recursive(xe, child,
+			depth + 1, max_depth);
 		if (__predict_false(ret == -1)) {
 			xdev_device_unref(device);
 			goto fail;
@@ -218,21 +244,27 @@ fail:
 }
 
 int
-xdev_enumerate_scan_devices(struct xdev_enumerate *xe, const char *root_devname, int max_depth)
+xdev_enumerate_scan_devices(struct xdev_enumerate *xe, const char *root_devname,
+	int max_depth)
 {
 	int ret;
 
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC))
+	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	xe->num_devices = 0;
 	xdev_list_free(&xe->devices);
 	TAILQ_INIT(&xe->devices);
 
-	ret = xdev_enumerate_scan_devices_recursive(xe, root_devname, 0, max_depth);
+	ret = xdev_enumerate_scan_devices_recursive(xe, root_devname, 0,
+		max_depth);
 	if (__predict_false(ret == -1)) {
 		xdev_list_free(&xe->devices);
 		return -1;
@@ -245,11 +277,15 @@ struct xdev_list_entry *
 xdev_enumerate_get_list_entry(struct xdev_enumerate *xe)
 {
 
-	if (__predict_false(xe == NULL))
+	if (__predict_false(xe == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC))
+	if (__predict_false(xe->magic != XDEV_ENUMERATE_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	return TAILQ_FIRST(&xe->devices);
 }

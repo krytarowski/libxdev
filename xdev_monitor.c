@@ -36,6 +36,7 @@ __RCSID("$NetBSD$");
 #include <sys/stat.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -55,11 +56,15 @@ xdev_monitor_new(struct xdev *x)
 {
 	struct xdev_monitor *xm;
 
-	if (__predict_false(x == NULL))
+	if (__predict_false(x == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(x->magic != XDEV_MAGIC))
+	if (__predict_false(x->magic != XDEV_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	xm = (struct xdev_monitor *)calloc(sizeof(*xm), 1);
 	if (__predict_false(xm == NULL))
@@ -92,8 +97,15 @@ struct xdev_monitor *
 xdev_monitor_ref(struct xdev_monitor *xm)
 {
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
+
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	xm->refcnt++;
 
@@ -104,10 +116,18 @@ struct xdev_monitor *
 xdev_monitor_unref(struct xdev_monitor *xm)
 {
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
+
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	if (xm->refcnt == 1) {
+		xm->magic = 0xdeadbeef;
 		free(xm);
 		return NULL;
 	}
@@ -121,18 +141,33 @@ struct xdev *
 xdev_monitor_get_xdev(struct xdev_monitor *xm)
 {
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
+
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	return xm->xdev;
 }
 
 int
-xdev_monitor_filter(struct xdev_monitor *xm, xdev_filter_cb xfcb, void *xfcb_cookie)
+xdev_monitor_filter(struct xdev_monitor *xm, xdev_filter_cb xfcb,
+	void *xfcb_cookie)
 {
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
+
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	xm->xfcb = xfcb;
 	xm->xfcb_cookie = xfcb_cookie;
@@ -157,7 +192,7 @@ xdev_monitor_thread(void *arg)
 	char *xml;
 	bool b;
 
-	const static uint8_t one = 1;
+	const static uint8_t one = '1';
 
 	assert(arg != NULL);
 
@@ -238,11 +273,15 @@ xdev_monitor_enable_receiving(struct xdev_monitor *xm)
 {
 	int rv;
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC))
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	rv = pthread_create(&xm->thread, NULL, xdev_monitor_thread, xm);
 	if (__predict_false(rv != 0)) {
@@ -256,11 +295,15 @@ int
 xdev_monitor_get_fd(struct xdev_monitor *xm)
 {
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return -1;
+	}
 
-	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC))
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	return xm->pipe_fd[0];
 }
@@ -272,11 +315,15 @@ xdev_monitor_receive_device(struct xdev_monitor *xm)
 	struct xdev_device *xd;
 	uint8_t byte;
 
-	if (__predict_false(xm == NULL))
+	if (__predict_false(xm == NULL)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
-	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC))
+	if (__predict_false(xm->magic != XDEV_MONITOR_MAGIC)) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	if (__predict_false(xread(xm->pipe_fd[0], &byte, 1) < 0))
 		return NULL;
@@ -294,5 +341,6 @@ xdev_monitor_receive_device(struct xdev_monitor *xm)
 
 fail:
 	pthread_mutex_unlock(&xm->mutex);
+	errno = ENOBUFS;
 	return NULL;
 }

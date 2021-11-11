@@ -90,12 +90,12 @@ xdev_monitor_new(struct xdev *x)
 	return xm;
 
 fail3:
-	close(xm->pipe_fd[0]);
-	close(xm->pipe_fd[1]);
+	xclose(xm->pipe_fd[0]);
+	xclose(xm->pipe_fd[1]);
 
 fail2:
-	close(xm->shutdown_fd[0]);
-	close(xm->shutdown_fd[1]);
+	xclose(xm->shutdown_fd[0]);
+	xclose(xm->shutdown_fd[1]);
 
 fail:
 	free(xm);
@@ -141,10 +141,10 @@ xdev_monitor_unref(struct xdev_monitor *xm)
 			xwrite(xm->shutdown_fd[1], &one, 1);
 			pthread_join(xm->thread, NULL);
 		}
-		close(xm->shutdown_fd[0]);
-		close(xm->shutdown_fd[1]);
-		close(xm->pipe_fd[0]);
-		close(xm->pipe_fd[1]);
+		xclose(xm->shutdown_fd[0]);
+		xclose(xm->shutdown_fd[1]);
+		xclose(xm->pipe_fd[0]);
+		xclose(xm->pipe_fd[1]);
 		xdev_list_free(&xm->devices);
 		pthread_mutex_destroy(&xm->mutex);
 		xm->magic = 0xdeadbeef;
